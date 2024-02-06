@@ -1,0 +1,32 @@
+{
+  "name": "mail-parser",
+  "version": "1.0.0",
+  "private": true,
+  "author": "Kristopher D. Rowe",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GoogleCloudPlatform/nodejs-docs-samples.git"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "test": "GOOGLE_APPLICATION_CREDENTIALS=secrets/service-account.json mocha test/*.test.js --timeout=6000 --exit",
+    "start": "npx functions-framework --target=parseEmail --signature-type=event"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.1.0",
+    "@google-cloud/logging": "^11.0.0",
+    "@google-cloud/pubsub": "^4.1.1",
+    "@google-cloud/secret-manager": "^5.0.1",
+    "chai-http": "^4.4.0",
+    "config": "^3.3.10",
+    "googleapis": "^131.0.0",
+    "js-yaml": "^4.1.0",
+    "twilio": "^4.21.0"
+  },
+  "devDependencies": {
+    "chai": "^4.4.1",
+    "mocha": "^10.2.0"
+  }
+}
