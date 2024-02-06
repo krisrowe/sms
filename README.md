@@ -26,7 +26,16 @@ npm test
 npm start
 ```
 
-# Deploy to Cloud Run
+# Deploy to Cloud Functions
 ```bash
 gcloud builds submit --substitutions=_TARGET_PROJECT_ID=my-project-id,_REGION=us-central1,_ACCOUNT_NAME=messenger
+```
+
+# Test in the Cloud
+```bash
+chmod +x trigger.sh
+TARGET_PROJECT_ID=$(gcloud config get-value project)
+MSG_TO=800-555-1212
+MSG_BODY="Hello World"
+./trigger.sh $TARGET_PROJECT_ID, $MSG_TO, $MSG_BODY
 ```

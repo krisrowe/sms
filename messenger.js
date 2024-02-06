@@ -33,13 +33,32 @@ async function getTwilio() {
     return _twilio;
 }
 
-async function sendSms(body, to = null) {
-    if (!body) {
-        throw new Error('Missing required parameter: body');
+async function sendSms(message) {
+    if (!message) {
+        throw 'No message specified.';
     }
-    if (to) {
-        to = standardizePhoneNumber(to);
+    // make sure message is an object
+    if (typeof message !== 'object') {
+        throw 'Message data is not an object.';
     }
+    if (!message.to) {
+        throw 'Specified message object must include a "to" property with a non-empty string value.';
+    }
+    if (!message.body) {
+        throw 'Specified message object must include a "body" property with a non-empty string value.';
+    }
+
+    var to;
+    if (process.env.OVERRIDE_TO) {
+        to = process.env.OVERRIDE_TO;
+        logger.info("The 'to' property of the message object has been overridden by the OVERRIDE_TO environment variable.");
+    } else {
+        to = message.to;
+    }
+    to = standardizePhoneNumber(to);
+    const maskedTo = maskPhoneNumber(to);
+    logger.info(`Sending SMS to ${maskedTo}: ${message.body}`);
+
     var twilio;
     try {
         twilio = await getTwilio();
@@ -48,17 +67,43 @@ async function sendSms(body, to = null) {
         throw ex;
     }
     to = to || twilio.secrets.defaultSendTo;
+    var twilioResponse;
     try {
-        return await twilio.client.messages.create({ 
-            body: body,  
+        twilioResponse = await twilio.client.messages.create({ 
+            body: message.body,  
             messagingServiceSid: twilio.secrets.messagingServiceSid,      
             to: to
         }); 
     } catch (ex) {
-        logger.log('error', 'Failed to send SMS: ' + ex);
+        logger.error('Failed to send SMS: ' + ex);
         throw ex;  
     }   
+    // return true if twilioResponse is an object
+    return twilioResponse && typeof twilioResponse === 'object';
 }
+
+/**
+ * Masks a phone number except for the first 4 digits.
+ * 
+ * @param {string} phoneNumber The phone number to mask.
+ * @return {string} The masked phone number.
+ */
+function maskPhoneNumber(phoneNumber) {
+    // Remove non-digit characters from the phone number
+    const digitsOnly = phoneNumber.replace(/\D/g, '');
+    
+    // Check if the phone number has enough digits to mask
+    if (digitsOnly.length <= 4) {
+      return digitsOnly; // Return as is if not enough digits to mask
+    }
+    
+    // Keep the first 4 digits unmasked and mask the rest
+    const visibleSection = digitsOnly.slice(0, 4);
+    const maskedSection = digitsOnly.slice(4).replace(/\d/g, '*');
+    
+    return visibleSection + maskedSection;
+  }
+  
 
 function standardizePhoneNumber(phoneNumber) {
     if (!phoneNumber) {

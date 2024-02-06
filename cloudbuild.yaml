@@ -1,5 +1,16 @@
 steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if ! gcloud pubsub topics list --project=$_TARGET_PROJECT_ID --format="value(name)" | grep -q "$_TRIGGER_TOPIC"; then
+          gcloud pubsub topics create $_TRIGGER_TOPIC --project=$_TARGET_PROJECT_ID
+        else
+          echo "Topic $_TRIGGER_TOPIC already exists."
+        fi
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
       - 'services'
@@ -7,7 +18,6 @@ steps:
       - 'cloudfunctions.googleapis.com'
       - '--project=$_TARGET_PROJECT_ID'
 
-  # Enable Cloud Build API as required to deploy Cloud Functions.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
@@ -16,7 +26,6 @@ steps:
       - 'cloudbuild.googleapis.com'
       - '--project=$_TARGET_PROJECT_ID'
 
-  # Deploy the Cloud Function using Cloud SDK
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
@@ -39,9 +48,6 @@ substitutions:
   _REGION: '$LOCATION'
   _TRIGGER_TOPIC: sms
   _OVERRIDE_TO: ''
-
-timeout: 1200s
-
 
 options:
   dynamicSubstitutions: true
