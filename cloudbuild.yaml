@@ -35,7 +35,7 @@ steps:
 substitutions:
   _TARGET_PROJECT_ID: '$PROJECT_ID'
   _FUNCTION_NAME: sms
-  _ACCOUNT_NAME: 'sms'
+  _ACCOUNT_NAME: 'messenger'
   _REGION: '$LOCATION'
   _TRIGGER_TOPIC: sms
   _OVERRIDE_TO: ''
