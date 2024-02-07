@@ -26,9 +26,24 @@ npm test
 npm start
 ```
 
-# Deploy to Cloud Functions
+# Deploy to Cloud Functions as a pull subscription
+1. Clone this repo
+2. Confirm target project has a service account named 'messenger' (or see available Cloud Build substitution)
+3. Set the TARGET_PROJECT_ID env var used below
+4. Kick-off the Cloud Build script
+## Pull Subscription
 ```bash
-gcloud builds submit --substitutions=_TARGET_PROJECT_ID=my-project-id,_REGION=us-central1,_ACCOUNT_NAME=messenger
+# Note that passing the mode as pull is not required here, as that's the default,
+# but showing that param is available.
+# NOTE: Using pull with Cloud Scheduler invocation is recommended to allow control over the number
+# of messages processed, which can be controlled via env vars and a Cloud Build substitution.
+gcloud builds submit --region=us-central1 --substitutions=_TARGET_PROJECT_ID=$TARGET_PROJECT_ID,_MODE=pull
+```
+## Push Subscription
+```bash
+# Note that passing the mode as pull is not required here, as that's the default,
+# but showing that param is available.
+gcloud builds submit --region=us-central1 --substitutions=_TARGET_PROJECT_ID=$TARGET_PROJECT_ID,_MODE=push
 ```
 
 # Test in the Cloud

@@ -1,6 +1,10 @@
-const log  = require('./logger');
+const {PubSub} = require('@google-cloud/pubsub');
+const pubSubClient = new PubSub();
+const log = require('./logger'); // Make sure this path is correct for your logger module
+const messenger = require('./messenger'); // Adjust this path to where your messenger module is located
 
-async function send(message, context) {
+// Helper function to process messages
+async function processMessage(message) {
     if (!message || typeof message !== 'object') {
         throw new Error("No message received or message format is invalid.");
     }
@@ -8,32 +12,102 @@ async function send(message, context) {
     let messageId;
     let messageData;
 
-    // Determine if message is a Pub/Sub message or direct payload
     if (message.data) {
         // Handling Pub/Sub message
         messageId = message.messageId || message.id;
         log.info('Processing an SMS message as Pub/Sub message id ' + messageId);
         const data = Buffer.from(message.data, 'base64').toString();
-        log.debug(`Message data length for pub sub message id ${messageId}: ${data.length}`);
         messageData = JSON.parse(data);
-    } else if (message.type) {
-        // Handling direct payload (e.g., from testing feature)
-        log.info('Processing a direct payload without pub sub message envelope.');
-        messageId = message.id || 'DirectPayload-' + Date.now(); // Assign a unique ID for logging
-        messageData = message; // Directly use the message as booking data
     } else {
-        throw new Error("Invalid message format. Message must have 'data' or 'type'.");
+        // Assume message is a direct payload
+        log.info('Processing a direct payload.');
+        messageId = 'DirectPayload-' + Date.now(); // Assign a unique ID for logging
+        messageData = message;
     }
 
-    log.debug("JSON parsed successfully for data in message id " + messageId + ".");
-    const messenger = require('./messenger');
-    let smsResult = await messenger.sendSms(messageData);
-    log.debug("Result of sending SMS message id " + messageId + ": " + JSON.stringify(smsResult));
+    try {
+        log.debug("Processing message id " + messageId);
+        let smsResult = await messenger.sendSms(messageData);
+        log.debug("Result of sending SMS message id " + messageId + ": " + JSON.stringify(smsResult));
+    } catch (error) {
+        log.error(`Error sending SMS for message id ${messageId}:`, error);
+        throw error;
+    }
 
     return true;
 }
 
+// Function to handle messages from Pub/Sub push subscription
+exports.send = async (message, context) => {
+    await processMessage(message);
+};
 
-// Export the name assigned when deploying as a Cloud Function
-// so that the corect entry point will be found and used.
-exports.send = send;
+exports.pull = async (req, res) => {
+    const SUBSCRIPTION_NAME = process.env.PULL_SUBSCRIPTION_NAME;
+    if (!SUBSCRIPTION_NAME) {
+      log.error('Pull subscription name (PULL_SUBSCRIPTION_NAME) is not defined in the environment variables.');
+      res.status(500).send('The server is misconfigured. Please try again later.');
+      return;
+    }
+
+    console.log("Project ID:" + process.env.GOOGLE_CLOUD_PROJECT);
+    console.log("Subscription Name:" + SUBSCRIPTION_NAME);
+  
+    const MAX_MESSAGES = parseInt(process.env.MAX_MESSAGES + "", 10) || 10;
+    const ALWAYS_ACK = process.env.ALWAYS_ACK !== 'false';
+    const subscription = pubSubClient.subscription(SUBSCRIPTION_NAME);
+    
+    let messagesProcessed = 0;
+    let allMessagesProcessed = false; // Flag to track if all messages have been processed
+    let timeoutId; // Timeout ID for response handling
+  
+    // Listen for new messages
+    subscription.on('message', async message => {
+      console.log(`Received message: ${message.id}`);
+      
+      try {
+        await processMessage(message);
+      } catch (error) {
+        log.error(`Error processing message ${message.id}:`, error);
+        if (!ALWAYS_ACK) {
+          return; // Skip acknowledgment if ALWAYS_ACK is not true and an error occurred
+        }
+      }
+      
+      // Acknowledge the message if ALWAYS_ACK is true or processing succeeded
+      await message.ack();
+      
+      // Increment the counter
+      messagesProcessed++;
+      
+      // Check if the maximum number of messages processed
+      if (messagesProcessed >= MAX_MESSAGES) {
+        allMessagesProcessed = true;
+        clearTimeout(timeoutId); // Clear the timeout as we've received enough messages
+        sendResponse();
+      }
+    });
+  
+    // Handle error
+    subscription.on('error', error => {
+      console.error('Error pulling messages:', error);
+      res.status(500).send('Error pulling messages');
+    });
+  
+    // Set a timeout to send response if not all messages are received within 30 seconds
+    timeoutId = setTimeout(() => {
+      sendResponse();
+    }, 30000); // Adjust as needed
+  
+    // Function to send HTTP response when all messages have been processed or timeout occurs
+    function sendResponse() {
+      if (allMessagesProcessed || messagesProcessed > 0) {
+        // Unsubscribe from further messages
+        subscription.removeListener('message', handleMessage);
+  
+        // Send response
+        res.status(200).send(`Attempted to process ${messagesProcessed} messages.`);
+      }
+    }
+  };
+  

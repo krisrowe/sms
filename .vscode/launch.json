@@ -14,6 +14,7 @@
         "skipFiles": ["<node_internals>/**"],
         "timeout": 20000,
         "env": {
+          "PULL_SUBSCRIPTION_NAME": "sms",
           "GOOGLE_APPLICATION_CREDENTIALS": "${workspaceFolder}/secrets/service-account.json"
         }
       },

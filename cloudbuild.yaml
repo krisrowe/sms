@@ -4,49 +4,65 @@ steps:
     args:
       - '-c'
       - |
-        if ! gcloud pubsub topics list --project=$_TARGET_PROJECT_ID --format="value(name)" | grep -q "$_TRIGGER_TOPIC"; then
-          gcloud pubsub topics create $_TRIGGER_TOPIC --project=$_TARGET_PROJECT_ID
+        if ! gcloud pubsub topics list --project=$_TARGET_PROJECT_ID --format="value(name)" | grep -q "$_TOPIC"; then
+          gcloud pubsub topics create $_TOPIC --project=$_TARGET_PROJECT_ID
         else
-          echo "Topic $_TRIGGER_TOPIC already exists."
+          echo "Topic $_TOPIC already exists."
         fi
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: 'gcloud'
+    entrypoint: 'bash'
     args:
-      - 'services'
-      - 'enable'
-      - 'cloudfunctions.googleapis.com'
-      - '--project=$_TARGET_PROJECT_ID'
+      - '-c'
+      - |
+        if [ "${_MODE}" = "pull" ]; then
+          echo "Configuring for pull mode."
+          if ! gcloud pubsub subscriptions list --project=$_TARGET_PROJECT_ID --format="value(name)" | grep -q "$_PULL_SUBSCRIPTION_NAME"; then
+            gcloud pubsub subscriptions create $_PULL_SUBSCRIPTION_NAME --topic $_TOPIC --project=$_TARGET_PROJECT_ID
+          else
+            echo "Pull subscription $_PULL_SUBSCRIPTION_NAME already exists."
+          fi
+        else
+          echo "Configuring for push mode."
+        fi
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: 'gcloud'
+    entrypoint: 'bash'
     args:
-      - 'services'
-      - 'enable'
-      - 'cloudbuild.googleapis.com'
-      - '--project=$_TARGET_PROJECT_ID'
-
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: 'gcloud'
-    args:
-      - 'functions'
-      - 'deploy'
-      - $_FUNCTION_NAME
-      - '--runtime=nodejs20'
-      - '--trigger-topic=${_TRIGGER_TOPIC}'
-      - '--entry-point=send'
-      - '--service-account=${_ACCOUNT_NAME}@${_TARGET_PROJECT_ID}.iam.gserviceaccount.com'
-      - '--region=${_REGION}'
-      - '--allow-unauthenticated'
-      - '--set-env-vars=OVERRIDE_TO=${_OVERRIDE_TO}'
-      - '--project=$_TARGET_PROJECT_ID'
+      - '-c'
+      - |
+        if [ "${_MODE}" = "pull" ]; then
+          gcloud functions deploy $_FUNCTION_NAME \
+            --runtime=nodejs20 \
+            --trigger-http \
+            --entry-point=pull \
+            --service-account=${_ACCOUNT_NAME}@${_TARGET_PROJECT_ID}.iam.gserviceaccount.com \
+            --region=${_REGION} \
+            --allow-unauthenticated \
+            --set-env-vars=TOPIC=${_TOPIC},PULL_SUBSCRIPTION_NAME=${_PULL_SUBSCRIPTION_NAME},MAX_MESSAGES=${_MAX_MESSAGES},ALWAYS_ACK=${_ALWAYS_ACK},MODE=${_MODE},OVERRIDE_TO=${_OVERRIDE_TO} \
+            --project=$_TARGET_PROJECT_ID
+        else
+          gcloud functions deploy $_FUNCTION_NAME \
+            --runtime=nodejs20 \
+            --trigger-topic=${_TOPIC} \
+            --entry-point=send \
+            --service-account=${_ACCOUNT_NAME}@${_TARGET_PROJECT_ID}.iam.gserviceaccount.com \
+            --region=${_REGION} \
+            --allow-unauthenticated \
+            --set-env-vars=TOPIC=${_TOPIC},PULL_SUBSCRIPTION_NAME=${_PULL_SUBSCRIPTION_NAME},MAX_MESSAGES=${_MAX_MESSAGES},ALWAYS_ACK=${_ALWAYS_ACK},MODE=${_MODE},OVERRIDE_TO=${_OVERRIDE_TO} \
+            --project=$_TARGET_PROJECT_ID
+        fi
 
 substitutions:
   _TARGET_PROJECT_ID: '$PROJECT_ID'
-  _FUNCTION_NAME: sms
+  _FUNCTION_NAME: 'sms'
   _ACCOUNT_NAME: 'messenger'
   _REGION: '$LOCATION'
-  _TRIGGER_TOPIC: sms
+  _TOPIC: 'sms'
+  _PULL_SUBSCRIPTION_NAME: 'sms'
+  _MAX_MESSAGES: '10'
+  _ALWAYS_ACK: 'true'
+  _MODE: 'pull'
   _OVERRIDE_TO: ''
 
 options:
