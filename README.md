@@ -17,13 +17,19 @@ npm install
 3. You will have an option Run Tests under Debug
 
 # Run Locally via npm
-## Run tests
+## Run unit tests
 ```bash
 npm test 
 ```
 ## Run server
 ```bash
 npm start
+```
+
+# Run an integration test locally
+```bash
+export PHONE_NUMBER=800-555-1212
+scripts/test-pull.sh my-gcp-project-id 10 --local # number indicates how many messages to publish
 ```
 
 # Deploy to Cloud Functions as a pull subscription
@@ -48,9 +54,9 @@ gcloud builds submit --region=us-central1 --substitutions=_TARGET_PROJECT_ID=$TA
 
 # Test in the Cloud
 ```bash
-chmod +x trigger.sh
+chmod +x scripts/trigger.sh
 TARGET_PROJECT_ID=$(gcloud config get-value project)
 MSG_TO=800-555-1212
 MSG_BODY="Hello World"
-./trigger.sh $TARGET_PROJECT_ID, $MSG_TO, $MSG_BODY
+scripts/trigger.sh $TARGET_PROJECT_ID, $MSG_TO, $MSG_BODY
 ```

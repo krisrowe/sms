@@ -22,6 +22,11 @@ steps:
           else
             echo "Pull subscription $_PULL_SUBSCRIPTION_NAME already exists."
           fi
+          # Grant the necessary permissions to the service account for the Cloud Function
+          gcloud pubsub subscriptions add-iam-policy-binding $_PULL_SUBSCRIPTION_NAME \
+            --member=serviceAccount:${_ACCOUNT_NAME}@${_TARGET_PROJECT_ID}.iam.gserviceaccount.com \
+            --role=roles/pubsub.subscriber \
+            --project=$_TARGET_PROJECT_ID
         else
           echo "Configuring for push mode."
         fi

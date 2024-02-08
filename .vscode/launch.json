@@ -15,6 +15,10 @@
         "timeout": 20000,
         "env": {
           "PULL_SUBSCRIPTION_NAME": "sms",
+          "MAX_MESSAGES": "5",
+          "LISTEN_SECONDS": "1",
+          "LOG_MSG_ON_ERR": "true",
+          "DRY_RUN": "true",
           "GOOGLE_APPLICATION_CREDENTIALS": "${workspaceFolder}/secrets/service-account.json"
         }
       },

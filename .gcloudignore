@@ -14,3 +14,4 @@
 .gitignore
 secrets
 node_modules
+scripts

@@ -68,6 +68,7 @@ async function sendSms(message) {
     }
     to = to || twilio.secrets.defaultSendTo;
     var twilioResponse;
+    if (!process.env.DRY_RUN) {
     try {
         twilioResponse = await twilio.client.messages.create({ 
             body: message.body,  
@@ -78,6 +79,9 @@ async function sendSms(message) {
         logger.error('Failed to send SMS: ' + ex);
         throw ex;  
     }   
+    } else {
+        logger.notice('Skipped sending SMS to ' + maskPhoneNumber(to) + '. Dry run mode enabled as per DRY_RUN environment variable.');
+    } 
     // return true if twilioResponse is an object
     return twilioResponse && typeof twilioResponse === 'object';
 }
