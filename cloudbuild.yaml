@@ -43,7 +43,7 @@ steps:
             --entry-point=pull \
             --service-account=${_ACCOUNT_NAME}@${_TARGET_PROJECT_ID}.iam.gserviceaccount.com \
             --region=${_REGION} \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --set-env-vars=TOPIC=${_TOPIC},PULL_SUBSCRIPTION_NAME=${_PULL_SUBSCRIPTION_NAME},MAX_MESSAGES=${_MAX_MESSAGES},ALWAYS_ACK=${_ALWAYS_ACK},MODE=${_MODE},OVERRIDE_TO=${_OVERRIDE_TO} \
             --project=$_TARGET_PROJECT_ID
         else
@@ -53,7 +53,7 @@ steps:
             --entry-point=send \
             --service-account=${_ACCOUNT_NAME}@${_TARGET_PROJECT_ID}.iam.gserviceaccount.com \
             --region=${_REGION} \
-            --allow-unauthenticated \
+            --no-allow-unauthenticated \
             --set-env-vars=TOPIC=${_TOPIC},PULL_SUBSCRIPTION_NAME=${_PULL_SUBSCRIPTION_NAME},MAX_MESSAGES=${_MAX_MESSAGES},ALWAYS_ACK=${_ALWAYS_ACK},MODE=${_MODE},OVERRIDE_TO=${_OVERRIDE_TO} \
             --project=$_TARGET_PROJECT_ID
         fi
